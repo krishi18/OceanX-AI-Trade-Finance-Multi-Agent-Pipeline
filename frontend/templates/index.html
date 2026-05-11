@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>OceanX AI — Deal Intake</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="app">
+
+    <header>
+      <div class="header-left">
+        <div class="wordmark">OceanX AI</div>
+        <h1>New deal intake</h1>
+        <p class="subtitle">Fill in the customer details. The system handles qualification, underwriting, contract drafting, and back-office setup automatically.</p>
+      </div>
+      <div class="header-meta">
+        <span class="env-pill">sandbox</span>
+      </div>
+    </header>
+
+    <div class="pipeline-bar">
+      <div class="pipe-step active" id="pstep-0"><span class="step-dot"></span> Qualify</div>
+      <div class="pipe-sep"></div>
+      <div class="pipe-step" id="pstep-1"><span class="step-dot"></span> Underwrite</div>
+      <div class="pipe-sep"></div>
+      <div class="pipe-step" id="pstep-2"><span class="step-dot"></span> Contract</div>
+      <div class="pipe-sep"></div>
+      <div class="pipe-step" id="pstep-3"><span class="step-dot"></span> Systems</div>
+    </div>
+
+    <div class="card" id="inputSection">
+      <div class="card-header">
+        <h2>Customer details</h2>
+        <p class="card-sub">Only this form needs to be filled in. Everything downstream runs on its own.</p>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Company name</label>
+          <input type="text" id="company" value="BlueStar Trading Pte Ltd" />
+        </div>
+        <div class="form-group">
+          <label>Country</label>
+          <select id="country">
+            <option>Singapore</option>
+            <option>Malaysia</option>
+            <option>Hong Kong</option>
+            <option>United Kingdom</option>
+            <option>Australia</option>
+            <option>India</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Industry</label>
+          <select id="industry">
+            <option>Electronics</option>
+            <option>Textiles</option>
+            <option>Food & Beverage</option>
+            <option>Machinery</option>
+            <option>Chemicals</option>
+            <option>Consumer Goods</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Years in business</label>
+          <input type="number" id="years" value="5" min="0" max="100" />
+        </div>
+        <div class="form-group">
+          <label>Annual revenue (USD)</label>
+          <input type="text" id="revenue" value="3200000" />
+        </div>
+        <div class="form-group">
+          <label>Order value (USD)</label>
+          <input type="text" id="order_value" value="65000" />
+        </div>
+        <div class="form-group">
+          <label>Finance type</label>
+          <select id="finance_type">
+            <option>Import Finance</option>
+            <option>Inventory Finance</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Existing debt</label>
+          <select id="existing_debt">
+            <option>None</option>
+            <option>Low (under $100k)</option>
+            <option>Medium ($100k–$500k)</option>
+            <option>High (over $500k)</option>
+          </select>
+        </div>
+      </div>
+      <button class="run-btn" id="runBtn" onclick="runPipeline()">Start processing</button>
+    </div>
+
+    <div id="resultsSection" style="display:none;">
+
+      <div class="agent-card" id="card-0">
+        <div class="agent-header" onclick="toggleCard(0)">
+          <div class="agent-num" id="anum-0">1</div>
+          <div class="agent-info">
+            <h3>Is this a good lead?</h3>
+            <p>Checks company profile, scores the opportunity, picks the right outreach channel</p>
+          </div>
+          <div class="agent-status" id="status-0">not started</div>
+        </div>
+        <div class="agent-body" id="body-0"></div>
+      </div>
+
+      <div class="handoff-wrap">
+        <div class="handoff-line"></div>
+        <span class="handoff-label">qualification result passed to underwriting</span>
+        <div class="handoff-line"></div>
+      </div>
+
+      <div class="agent-card" id="card-1">
+        <div class="agent-header" onclick="toggleCard(1)">
+          <div class="agent-num" id="anum-1">2</div>
+          <div class="agent-info">
+            <h3>How much can we lend?</h3>
+            <p>Calculates safe credit limit, repayment structure, and weekly direct debit amount</p>
+          </div>
+          <div class="agent-status" id="status-1">not started</div>
+        </div>
+        <div class="agent-body" id="body-1"></div>
+      </div>
+
+      <div class="handoff-wrap">
+        <div class="handoff-line"></div>
+        <span class="handoff-label">credit terms passed to contract drafting</span>
+        <div class="handoff-line"></div>
+      </div>
+
+      <div class="agent-card" id="card-2">
+        <div class="agent-header" onclick="toggleCard(2)">
+          <div class="agent-num" id="anum-2">3</div>
+          <div class="agent-info">
+            <h3>Draft the agreement</h3>
+            <p>Writes the finance contract using approved terms, ready to send via DocuSign</p>
+          </div>
+          <div class="agent-status" id="status-2">not started</div>
+        </div>
+        <div class="agent-body" id="body-2"></div>
+      </div>
+
+      <div class="handoff-wrap">
+        <div class="handoff-line"></div>
+        <span class="handoff-label">contract confirmed — setting up back-office records</span>
+        <div class="handoff-line"></div>
+      </div>
+
+      <div class="agent-card" id="card-3">
+        <div class="agent-header" onclick="toggleCard(3)">
+          <div class="agent-num" id="anum-3">4</div>
+          <div class="agent-info">
+            <h3>Set everything up</h3>
+            <p>Creates the product and PO in CIN7, raises invoice and bill in Xero, initiates GoCardless mandate</p>
+          </div>
+          <div class="agent-status" id="status-3">not started</div>
+        </div>
+        <div class="agent-body" id="body-3"></div>
+      </div>
+
+      <div class="final-banner" id="finalBanner" style="display:none;">
+        <h3 id="finalTitle"></h3>
+        <p id="finalSummary"></p>
+        <button class="reset-btn" onclick="resetPipeline()">Start a new deal</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="/static/pipeline.js"></script>
+</body>
+</html>
