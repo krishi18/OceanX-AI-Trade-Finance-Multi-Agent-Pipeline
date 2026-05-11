@@ -1,146 +1,186 @@
-# OceanX AI — Multi-Step Agent Pipeline
+# OceanX AI - Trade Finance Multi-Agent Pipeline
 
-A working demo of a 4-agent trade finance automation system built for the OceanX AI intern assignment.
+Built for the OceanX AI Intern Assignment · May 2026
 
-## What It Does
+## What happens when you click the button
 
-Takes a single deal input form and runs 4 AI agents sequentially:
+**Agent 1 - Is this lead worth pursuing?**
+Scores the company 0–100, assigns a tier, flags any concerns, recommends the right outreach channel. If the score is too low, the pipeline stops here. No credit check runs on a bad lead.
 
-| Agent | Role | Tools (simulated) |
-|-------|------|-------------------|
-| 1 — Lead Qualification | Score, tier, and qualify the lead | Apollo, HubSpot |
-| 2 — Underwriting | Risk score, credit limit, payment terms | OceanX credit logic |
-| 3 — Contract Generation | DocuSign-ready contract with pricing | DocuSign |
-| 4 — Operations Setup | Create product, PO, invoice, bill, mandate | CIN7, Xero, GoCardless |
+**Supervisor review**
+Before anything moves forward, the Master Supervisor reads Agent 1's output and checks it makes sense. If it spots an inconsistency, it halts the pipeline and explains why.
 
-Each agent's output feeds the next as input. If a lead doesn't qualify, the pipeline halts early and no downstream agents run.
+**Agent 2 - How much can we safely lend?**
+Uses OceanX's actual credit rules — maximum 40% of annual revenue, repayment over 13 weeks via GoCardless weekly direct debits — to calculate a safe credit limit, upfront percentage, and weekly debit amount. Passes all of this to the next agent.
 
-The only human checkpoint: supplier payment approval via Wise (per OceanX capital control policy).
+**Supervisor review**
+Checks the numbers add up. Credit limit against revenue. Order size against the approved limit. Catches problems before a contract gets drafted around them.
 
----
+**Agent 3 - Draft the agreement**
+Every number in the contract comes directly from Agent 2 — credit limit, upfront amount, finance margin, total repayable. Nothing typed manually. DocuSign-ready the moment it's generated.
 
-## Project Structure
+**Supervisor review**
+Final check before ops systems are touched.
+
+**Agent 4 - Set everything up**
+CIN7 gets a product record and a purchase order. Xero gets an invoice and a supplier bill. GoCardless gets a mandate initiated. The system also picks the right collections model automatically:
+- **Model 1 — Open Credit**: fixed weekly GoCardless direct debit over 13 weeks, for standard import finance under $100k
+- **Model 2 — Stock & Release**: customer pays per batch of goods drawn down, for inventory finance or larger orders
+
+Then it stops. The Wise supplier payment is held for human approval — OceanX's capital control checkpoint.
+
+## Project structure
 
 ```
 oceanx-agent-pipeline/
+│
 ├── backend/
-│   └── app.py              # Flask API + all 4 agent functions
+│   └── app.py              Flask server + all agent logic
+│
 ├── frontend/
 │   ├── templates/
-│   │   └── index.html      # Main UI
+│   │   └── index.html      The form and result cards
 │   └── static/
-│       ├── style.css       # Styling
-│       └── pipeline.js     # Frontend logic + API calls
+│       ├── style.css       Styling
+│       └── pipeline.js     What happens when you click the button
+│
+├── .env.example            API key template
+├── .gitignore
 ├── requirements.txt
-├── .env.example
 └── README.md
 ```
+## Tech stack
 
----
+| | |
+|--|--|
+| Backend | Python, Flask |
+| AI | Claude Sonnet via Anthropic API |
+| Frontend | Vanilla HTML, CSS, JavaScript — no frameworks |
+| Fonts | Inter, JetBrains Mono |
 
-## Setup
+## Running it locally
 
-### 1. Clone the repo
+You need Python 3.8+ and a free Anthropic API key from [console.anthropic.com](https://console.anthropic.com).
+
+**1. Clone the repo**
 ```bash
-git clone https://github.com/YOUR_USERNAME/oceanx-agent-pipeline.git
-cd oceanx-agent-pipeline
+git clone https://github.com/krishi18/OceanX-AI-Trade-Finance-Multi-Agent-Pipeline.git
+cd OceanX-AI-Trade-Finance-Multi-Agent-Pipeline
 ```
 
-### 2. Create a virtual environment
+**2. Create a virtual environment**
 ```bash
 python -m venv venv
-source venv/bin/activate      # Mac/Linux
-venv\Scripts\activate         # Windows
+
+# Mac / Linux
+source venv/bin/activate
+
+# Windows
+venv\Scripts\activate
 ```
 
-### 3. Install dependencies
+**3. Install dependencies**
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Set your API key
+**4. Add your API key**
 ```bash
+# Mac / Linux
 cp .env.example .env
-# Open .env and paste your Anthropic API key
-# Get one at: https://console.anthropic.com
+
+# Windows
+copy .env.example .env
 ```
 
-### 5. Run the server
+Open `.env` and replace `your_api_key_here` with your actual Anthropic API key.
+
+**5. Start the server**
 ```bash
 cd backend
 python app.py
 ```
 
-### 6. Open in browser
+**6. Open in browser**
 ```
 http://localhost:5000
 ```
 
 ---
 
-## How to Demo It
+## Two inputs worth trying
 
-1. Open `http://localhost:5000`
-2. The form is pre-filled with a sample deal (BlueStar Trading, $3.2M revenue, $65k order)
-3. Click **Run agent pipeline**
-4. Watch all 4 agents run and display their outputs sequentially
-5. Try changing inputs — e.g. set "Years in business" to 0 and "Existing debt" to High to see the pipeline halt or decline
+### Clean run — everything approves
+
+A straightforward Singapore electronics importer. Strong revenue, no debt, order well within credit limit. All four agents complete, supervisor clears every stage.
+
+| Field | Value |
+|-------|-------|
+| Company name | Meridian Supply Co |
+| Country | Singapore |
+| Industry | Electronics |
+| Years in business | 7 |
+| Annual revenue | 4500000 |
+| Order value | 55000 |
+| Finance type | Import Finance |
+| Existing debt | None |
 
 ---
 
-## How the Agent Architecture Works
+### Flagged run — supervisor catches a bad deal
 
+A tiny company with high existing debt asking for a loan nearly equal to their entire annual revenue. Watch the supervisor halt the pipeline at underwriting and explain exactly why.
+
+| Field | Value |
+|-------|-------|
+| Company name | Redstone Traders Ltd |
+| Country | India |
+| Industry | Chemicals |
+| Years in business | 1 |
+| Annual revenue | 85000 |
+| Order value | 70000 |
+| Finance type | Inventory Finance |
+| Existing debt | High (over $500k) |
+
+## How agents hand off to each other
+
+```python
+# Each agent's output becomes the next agent's input
+qualification = agent_qualify(deal)
+underwriting  = agent_underwrite(deal, qualification)
+contract      = agent_generate_contract(deal, underwriting)
+ops           = agent_ops_setup(deal, contract, underwriting)
 ```
-Input Form
-    │
-    ▼
-Agent 1: Lead Qualification
-    │  (qualified = false → HALT, log to HubSpot)
-    │  (qualified = true → continue)
-    ▼
-Agent 2: Underwriting
-    │  (decision = Decline → HALT)
-    │  (decision = Approve / Conditional → continue)
-    ▼
-Agent 3: Contract Generation
-    │
-    ▼
-Agent 4: Operations Setup
-    │  Creates: CIN7 product, CIN7 PO, Xero invoice,
-    │           Xero bill, GoCardless mandate
-    │  Holds:   Wise payment (human approval required)
-    ▼
-Human Checkpoint: Approve supplier payment
-```
 
-Each agent is a separate Python function with its own system prompt. The `call_claude()` helper is shared — only the prompts differ. This is the core principle of multi-agent design: isolated responsibilities, shared infrastructure.
+The credit limit from underwriting flows into the contract automatically. The contract terms flow into the ops setup. Nothing is typed twice. Nothing gets out of sync.
 
----
+## What's simulated vs what's real
 
-## Extending to a Real System
+The AI reasoning is real — Claude is genuinely evaluating each decision. The back-office API calls are simulated. In production, each line in Agent 4 becomes a real HTTP request:
 
-| Currently simulated | Real implementation |
-|---------------------|---------------------|
-| CIN7 product + PO   | CIN7 REST API |
-| Xero invoice + bill | Xero API (OAuth2) |
-| GoCardless mandate  | GoCardless API |
-| Wise payment        | Wise Business API |
-| Apollo enrichment   | Apollo.io API |
-| DocuSign contract   | DocuSign eSignature API |
+| Currently | Production |
+|-----------|-----------|
+| Mock CIN7 product ID | POST to CIN7 REST API |
+| Mock Xero invoice | POST to Xero API (OAuth2) |
+| Mock GoCardless mandate | POST to GoCardless API |
+| Wise payment hold | POST to Wise Business API |
 
-Each of these is a one-function swap — replace the mock `agent_ops_setup()` return with a real API call.
+The pipeline logic doesn't change. You're swapping mock return values for real API calls, one system at a time.
+
+## API endpoints
+
+| Method | Endpoint | What it does |
+|--------|----------|-------------|
+| GET | `/` | Serves the UI |
+| POST | `/api/run-pipeline` | Runs the full pipeline |
+| POST | `/api/agent/qualify` | Runs Agent 1 only |
+| POST | `/api/agent/underwrite` | Runs Agent 2 only |
+| POST | `/api/agent/contract` | Runs Agent 3 only |
+
+## Cost
+
+About $0.01–0.02 per full run (5 Claude API calls). Free tier covers a few hundred demo runs.
 
 ---
 
-## Tech Stack
-
-- **Backend:** Python, Flask, Anthropic Python SDK
-- **Frontend:** Vanilla HTML/CSS/JS (no framework, easy to explain)
-- **AI:** Claude Sonnet via Anthropic API
-- **No database needed** — stateless per request
-
----
-
-## Built for
-
-OceanX AI Intern Automation Assignment — May 2026
+*Krishi Thiruppathi — OceanX AI Intern Assignment, May 2026*
